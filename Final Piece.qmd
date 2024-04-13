@@ -1,0 +1,230 @@
+---
+title: "**Beyond the Classroom**"
+subtitle: "**Unraveling Out-of-School Trends Amidst GDP and Lifespan Dynamics**"
+author: "**Barry Mangan**"
+date: "**04-09-2024**"
+format:
+  html: 
+      theme: zephyr,
+      backgroundcolor: "#e6f4f1"
+      toc: true
+      
+execute: 
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+#library
+library(tidyverse)
+library(ggplot2)
+library(plotly)
+library(gapminder)
+library(scales)
+library(readr)
+library(here)
+
+#data
+```{r read-data, message=FALSE}
+Metabase <- read_csv(here("Metabase.csv"))
+unicef_indicator_1 <- read_csv("unicef indicator 1.csv")
+
+data_join <- full_join(Metabase, unicef_indicator_1, by =c("country" = "country", "year" = "time_period"))
+
+map_world <- map_data("world")
+map_data_join <- full_join(unicef_indicator_1, map_world, by = c("country" = "region"))
+```
+
+<style>
+.flex-container {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.flex-item {
+  flex: 1;
+  margin: 10px;
+  padding: 10px;
+  box-sizing: border-box;
+  text-align: justify;
+}
+.plot-container {
+  border: 2px solid black;
+  padding: 10px;
+  margin: 10px;
+}
+</style>
+
+
+<div style="text-align: justify;">
+
+<div class="plot-container">
+**Education** extends beyond the classroom, deeply intertwined with socio-economic factors like **GDP per Capita ($)** and **Life Expectancy**. UNICEF's data on Out-of-School Rates for Children *unveils stark educational disparities rooted in socioeconomic status and geographical location.* These trends underscore the urgent need for targeted interventions to ensure equitable learning opportunities for all.
+
+Moreover, the correlation between **GDP per Capita** and **Educational access** highlights how *economic prosperity fosters higher enrollment rates, while lower GDP per capita often correlates with educational challenges.* Additionally, the intersection of **Education** and **Health** is evident, as *individuals with higher levels of education tend to exhibit better health outcomes.*
+
+
+<img src="Logos.jpeg" alt="Logo" style="width: 300px; height: auto; display: block; margin-left: auto; margin-right: auto;" />
+
+<div class="flex-container">
+  <div class="flex-item">
+```{r, fig.width=10, fig.height=7.5}
+#map
+ggplot(map_data_join) + 
+  aes(
+    x = long, 
+    y = lat, 
+    group = group, 
+    fill = obs_value
+    ) +
+  geom_polygon(
+    color = "black", 
+    size = 0.5
+    ) + 
+  scale_fill_gradient(
+    low = "lightgreen", 
+    high = "darkgreen",
+    name = "",
+    labels = scales::percent_format(scale = 1, accuracy = 1)
+    ) + 
+  labs(
+    x = "Longitude", 
+    y = "Latitude", 
+    title = "Average Out-of-School Rates"
+    ) + 
+  theme_void() +
+theme(plot.title = element_text(hjust = 0.5),
+      panel.border = element_rect(colour = "black", fill=NA, size=1, linetype = "solid"),
+    plot.background = element_rect(color = "black", fill = NA, size = 4)
+      )
+```
+
+</div>
+<div class="flex-item">
+
+The map visualises global **Out-of-School Rates**, providing a clear snapshot of *educational access and disparities across different regions.* Through color gradients, viewers can discern areas with high, moderate, and low rates of children out of school, enabling them to identify geographical patterns and trends.
+  </div>
+</div>
+
+
+```{r}
+#Time Series
+Time_Series_2 <- data_join %>%
+  filter(`GDP per capita (constant 2015 US$)` > 50000) %>%
+  ggplot(
+    aes(
+      x = year, 
+      y = `GDP per capita (constant 2015 US$)`, 
+      group = country, 
+      colour = country
+    )) +
+  geom_line() +
+  labs(
+    x = "Year", 
+    y = "GDP per Capita ($)", 
+    title = "Time Series of GDP per Capita by Country (>$50,000)"
+  ) + 
+  theme(legend.position = "none",
+        plot.title = element_text(hjust = 0.5),
+      panel.border = element_rect(colour = "black", fill=NA, size=1, linetype = "solid"),
+    plot.background = element_rect(color = "black", fill = NA, size = 4)
+      ) +
+  scale_x_continuous(breaks = seq(1960, 2030, by = 10)) +
+  scale_y_continuous(breaks = seq(0, 250000, by = 25000))
+ggplotly(Time_Series_2)
+```
+
+
+The visualized time series data highlights the economic trajectories of countries with a **GDP per capita exceeding $50,000**, traced over several decades from 1960 onwards. Through the use of line graphs differentiated by color for each country, the visualization captures the *upward trend of economic prosperity, alongside the fluctuations that mark periods of rapid growth or economic downturns.* This data not only reflects the resilience and growth of these nations' economies but also emphasises the disparities and challenges that persist. By setting a high benchmark for GDP per capita, *the analysis focuses on a select group of countries, showcasing their economic progress against the backdrop of global economic changes.*
+
+
+```{r}
+#scatterplot
+Scatterplot_2 <- data_join %>%
+  filter(sex == "Total" & !is.na(obs_value) & !is.na(`Life expectancy at birth, total (years)`)) %>%
+  group_by(country) %>%
+  ggplot(
+    aes(
+      x = round(obs_value, 2), 
+      y = round(`Life expectancy at birth, total (years)`, 2), 
+      color = country
+      )) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, size = 0.5, color = "black") + 
+  theme(legend.position = "none") +
+  scale_x_continuous(
+    breaks = seq(0, 100, by = 20),
+    labels = function(x) paste(x, "%")
+    ) +
+  scale_y_continuous(
+    breaks = seq(0, 100, by = 10),
+    labels = function(x) paste(x, "years")
+    ) +
+  labs(
+    y = "Life Expectancy",
+    x = "Out-of-School Rates %",
+    title = "Life Expectancy & Out-of-School Rates by Country"
+  )+
+  coord_cartesian(ylim = c(50, 90)) +
+  theme(plot.title = element_text(hjust = 0.5),
+      panel.border = element_rect(colour = "black", fill=NA, size=1)
+      )
+ggplotly(Scatterplot_2)
+
+```
+
+
+Plotting **Out-of-School Rates** against **Life Expectancy** on a graph provides a clear visual depiction of the relationship between **educational access** and **health outcomes** worldwide. By mapping each country's data point, viewers can discern potential correlations or trends between these two critical indicators.
+There is a clear indication, proven by the regression line, that *the lower a country's Out-of-School Rate, the higher the Life Expectancy.* There are, however, some outliers. For example, **Panama**, who have a Life Expectancy of **76.66**, ranking them 35th in the world by the World Health Organisation (Life expectancy at birth (years), no date), whilst their Out-of-School Rate is **88.25**.
+
+<div class="flex-container">
+  <div class="flex-item">
+```{r, fig.width=10, fig.height=7.5}
+#Bar Chart
+Bar_Chart <- data_join %>%
+  filter(sex == "Total") %>%
+  filter(country %in% c("Belgium", "India", "Egypt", "United States", "Yemen")) %>%
+  group_by(country) %>%
+  ggplot(
+    aes(
+      x = reorder(country, obs_value), 
+      y = round(obs_value, 2), 
+      fill = country
+      )) +
+  scale_y_continuous(
+    breaks = seq(0, 100, by = 20),
+    labels = function(x) paste(x, "%")
+  ) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(
+    y = "Out-of-School Rates %", 
+    x = "Country", 
+    title = "Out-of-School-Rates by Country"
+    ) +
+  theme(legend.position = "none",
+      panel.border = element_rect(colour = "black", fill=NA, size=1)
+      ) +
+  theme(plot.title = element_text(hjust = 0.5))
+ggplotly(Bar_Chart)
+```
+
+</div>
+<div class="flex-item">
+
+The bar chart meticulously illustrates the **out-of-school rates** for children in five distinct countries: **Belgium, India, Egypt, the United States, and Yemen**, offering a stark visual comparison of educational accessibility and challenges across diverse economic backgrounds. The choice of a minimalistic theme directs focus solely to the data, highlighting the *disparities in educational engagement.* Such visualization serves as a powerful tool to understand the *impact of socio-economic factors on education,* revealing not just numbers, but stories of *opportunity, inequality, and the urgent need for interventions in regions where the rates are most alarming.*
+
+  </div>
+</div>
+
+
+<img src="School.jpeg" alt="Logo" style="width: 300px; height: auto; display: block; margin-left: auto; margin-right: auto;" />
+
+
+The intertwining dynamics of **Education**, **GDP per Capita**, and **Life Expectancy** underscore the multifaceted nature of human development. UNICEF's data highlights the imperative of addressing educational disparities to foster inclusive growth and improve health outcomes. By recognizing the interconnectedness of these factors, policymakers can craft targeted interventions to ensure equitable access to education and promote holistic development for all individuals, regardless of socio-economic background. Ultimately, investing in education not only enhances human capital but also lays the foundation for sustainable socio-economic progress and improved quality of life globally.
